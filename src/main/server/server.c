@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 
 #include "create_listener.h"
+
 #include "constants.h"
 
 
@@ -89,6 +90,72 @@ int accept_client(struct epoll_event *evt, int *epollfd) {
     }
 }
 
+void get_file_from_client(struct epoll_event *evt){
+    int file_size = 0;
+    ssize_t res = 0;
+    char buf[BUF_SIZE] = {0};
+    read(evt->data.fd, (void *)&file_size, sizeof(file_size));
+    int left = file_size;
+    while ((res = read(evt->data.fd, buf, sizeof(buf) - 1)) >= 0 && left > 0) {
+        if (res == 0) {
+            fprintf(stderr, "disconnected %d fd\n", evt->data.fd);
+            close(evt->data.fd);
+        }
+        left -= res;
+        for (int fd = 0; fd < MAX_FDS; fd++) {
+            if (info[fd].type == WORKER) {
+                write(fd, buf, res);
+            }
+        }
+    }
+    for (int fd = 0; fd < MAX_FDS; fd++) {
+        if (info[fd].type == WORKER) {
+            free_workers--;
+            info[fd].status = IS_WORKING;
+        }
+    }
+}
+
+void get_worker_params(struct epoll_event *evt){
+    read(evt->data.fd, (char *) &workers[evt->data.fd].worker_params, sizeof(struct WorkerParams));
+    write(evt->data.fd, "OK\n", 3);
+    printf("%s %d %d\n", workers[evt->data.fd].worker_params.CPU_brand,
+           workers[evt->data.fd].worker_params.CPU_units,
+           workers[evt->data.fd].worker_params.memory);
+    info[evt->data.fd].status = GOT_INFO;
+}
+
+void get_results(struct epoll_event evt){
+    if (read(evt.data.fd, (char *) &workers[evt.data.fd].time, sizeof(workers[evt.data.fd].time)) ==
+        0) {
+        workers_overall--;
+        free_workers--;
+        info[evt.data.fd].type = 0;
+        info[evt.data.fd].status = 0;
+        close(evt.data.fd);
+    }
+    info[evt.data.fd].status = GOT_INFO;
+    free_workers++;
+    if (free_workers == workers_overall) {
+        for (int fd = 0; fd < MAX_FDS; fd++) {
+            char output_buf[BUF_SIZE] = {0};
+            snprintf(output_buf, BUF_SIZE, "%s:%d\n"
+                                           "CPU brand: %s\n"
+                                           "CPU units: %d\n"
+                                           "Memory: %d Mb\n"
+                                           "Time: %d nanosec\n",
+                     workers[fd].addr,
+                     workers[fd].port,
+                     workers[fd].worker_params.CPU_brand,
+                     workers[fd].worker_params.CPU_units,
+                     workers[fd].worker_params.memory,
+                     workers[fd].time);
+            write(client, output_buf, BUF_SIZE);
+            workers[fd].time = 0;
+        }
+        close(client);
+    }
+}
 
 int main(int argc, char *argv[]) {
     signal(SIGPIPE, SIG_IGN);
@@ -114,7 +181,6 @@ int main(int argc, char *argv[]) {
     epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &evt);
     evt.data.fd = client_sock;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, client_sock, &evt);
-    char buf[BUF_SIZE] = {0};
     while (1) {
         int timeout = -1;
         errno = 0;
@@ -131,64 +197,14 @@ int main(int argc, char *argv[]) {
             accept_client(&evt, &epollfd);
         }
         if (evt.data.fd != sock && evt.data.fd != client_sock) {
-            ssize_t res;
             if (info[evt.data.fd].type == CLIENT) {
-                while ((res = read(evt.data.fd, buf, sizeof(buf) - 1)) >= 0) {
-                    if (res == 0) {
-                        fprintf(stderr, "disconnected %d fd\n", evt.data.fd);
-                        close(evt.data.fd);
-                    }
-                    for (int fd = 0; fd < MAX_FDS; fd++) {
-                        if (info[fd].type == WORKER) {
-                            write(fd, buf, res);
-                        }
-                    }
-                }
-                for (int fd = 0; fd < MAX_FDS; fd++) {
-                    if (info[fd].type == WORKER) {
-                        free_workers--;
-                        info[fd].status = IS_WORKING;
-                    }
-                }
+                get_file_from_client(&evt);
             } else {
                 if (info[evt.data.fd].status == CONNECTED) {
-                    read(evt.data.fd, (char *) &workers[evt.data.fd].worker_params, sizeof(struct WorkerParams));
-                    write(evt.data.fd, "OK\n", 3);
-                    printf("%s %d %d\n", workers[evt.data.fd].worker_params.CPU_brand,
-                           workers[evt.data.fd].worker_params.CPU_units,
-                           workers[evt.data.fd].worker_params.memory);
-                    info[evt.data.fd].status = GOT_INFO;
+                    get_worker_params(&evt);
                 }
                 if (info[evt.data.fd].status == IS_WORKING) {
-                    if (read(evt.data.fd, (char *) &workers[evt.data.fd].time, sizeof(workers[evt.data.fd].time)) ==
-                        0) {
-                        workers_overall--;
-                        free_workers--;
-                        info[evt.data.fd].type = 0;
-                        info[evt.data.fd].status = 0;
-                        close(evt.data.fd);
-                    }
-                    info[evt.data.fd].status = GOT_INFO;
-                    free_workers++;
-                    if (free_workers == workers_overall) {
-                        for (int fd = 0; fd < MAX_FDS; fd++) {
-                            char output_buf[BUF_SIZE] = {0};
-                            snprintf(output_buf, BUF_SIZE, "%s:%d\n"
-                                                           "CPU brand: %s\n"
-                                                           "CPU units: %d\n"
-                                                           "Memory: %d Mb\n"
-                                                           "Time: %d nanosec\n",
-                                     workers[fd].addr,
-                                     workers[fd].port,
-                                     workers[fd].worker_params.CPU_brand,
-                                     workers[fd].worker_params.CPU_units,
-                                     workers[fd].worker_params.memory,
-                                     workers[fd].time);
-                            write(client, output_buf, BUF_SIZE);
-                            workers[fd].time = 0;
-                        }
-                        close(client);
-                    }
+                    get_results(evt);
                 }
             }
 
