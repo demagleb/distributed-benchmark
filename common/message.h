@@ -2,10 +2,10 @@
 #include <sys/time.h>
 
 typedef enum MessageType {
-    WORKER_STATUS, // Send to worker to get status
-    WORKER_WORK, // Send to worker to start work
-    WORKER_STOP, // Send to worker to stop work
-    WORKER_SHUTDOWN, // Send to worker to shutdown
+    WORKER_STATUS, // Send to worker.c to get status
+    WORKER_WORK, // Send to worker.c to start work
+    WORKER_STOP, // Send to worker.c to stop work
+    WORKER_SHUTDOWN, // Send to worker.c to shutdown
     MASTER_RESULT, // Send to master to return result
 } MessageType;
 
