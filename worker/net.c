@@ -1,14 +1,21 @@
-#include "connect.h"
+#include "net.h"
 #include "options.h"
+#include "../common/message.h"
 
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cpuid.h>
 #include <sys/sysinfo.h>
+#include <unistd.h>
+
+enum {
+    MTU = 4 << 10
+};
 
 int makeConnection() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -42,16 +49,36 @@ int makeConnection() {
 int connectToMaster() {
     int sock = makeConnection();
 
-    // struct sysinfo info;
-    // if (sysinfo(&info)) {
-        // perror("sysinfo");
-        // exit(1);
-    // }
- 
-    // TODO: send cpu info 
-    // int cpuCount = get_nprocs();
-    // int totalRam = info.totalram;
 
+    MasterInfoMessage info;
+
+
+    struct sysinfo sinfo;
+    if (sysinfo(&sinfo)) {
+        perror("sysinfo");
+        exit(1);
+    }
+
+    info.cpuCount = get_nprocs();
+    info.ram = sinfo.totalram;
+    memcpy(&info.cpuBrand, "Intel", 6);
+
+    write(sock, &info, sizeof(info));
 
     return sock;
+}
+
+void readFile(int socket, const char *filename, size_t filesize) {
+    
+    char buf[MTU];
+    size_t allGot = 0;
+
+    FILE* file = fopen(filename, "w") ;
+    while (allGot != filesize) {
+        int got = read(socket, buf, MTU);
+        fwrite(buf, 1, got, file);
+        allGot += got;
+    }
+    fclose(file);
+    return;
 }

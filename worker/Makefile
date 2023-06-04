@@ -1,2 +1,2 @@
-worker: main.c connect.c options.c
-	gcc main.c connect.c options.c -o worker.bin
+worker: main.c net.c options.c work.c
+	gcc main.c net.c options.c work.c -o worker.bin
