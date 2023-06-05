@@ -60,6 +60,7 @@ int get_results(int socket) {
     }
     buffer[bytes_read] = '\0';
     printf("%s", buffer);
+    fflush(stdout);
 
     return 0;
 }
