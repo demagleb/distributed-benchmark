@@ -9,7 +9,7 @@
 enum { BUFFER_SIZE = 1024, MAX_ATTEMPTS = 100 };
 
 int send_fileinfo(int socket, char *file_name, size_t file_size) {
-    FileInfo file_info;
+    struct FileInfo file_info;
     file_info.file_size = file_size;
     memset(file_info.file_name, 0, sizeof(file_info.file_name));
     strcpy(file_info.file_name, file_name);
