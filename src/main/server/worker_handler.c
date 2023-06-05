@@ -16,6 +16,7 @@
 #include "worker_handler.h"
 #include "constants.h"
 
+
 int free_workers = 0;
 int workers_overall = 0;
 
@@ -29,7 +30,7 @@ void accept_workers(struct Worker *workers, struct epoll_event *evt, int *epollf
         if (connection == -1) {
             break;
         }
-        struct epoll_event evt1 = {.events = EPOLLIN | EPOLLET};
+        struct epoll_event evt1 = {.events = EPOLLIN | EPOLLOUT | EPOLLET};
         evt1.data.fd = connection;
         epoll_ctl(*epollfd, EPOLL_CTL_ADD, connection, &evt1);
         workers[evt->data.fd].status = CONNECTED;
@@ -50,37 +51,42 @@ void get_worker_params(struct Worker *workers, struct epoll_event *evt){
     printf("%s %d %d\n", workers[evt->data.fd].worker_params.CPU_brand,
            workers[evt->data.fd].worker_params.CPU_units,
            workers[evt->data.fd].worker_params.memory);
-    workers[evt->data.fd].status = GOT_INFO;
+    workers[evt->data.fd].status = READY_FOR_TASK;
 }
 
-void get_results(struct Worker *workers, struct epoll_event evt, int *client){
+void get_results(struct Worker *workers, struct epoll_event evt, struct Client *client){
     if (read(evt.data.fd, (char *) &workers[evt.data.fd].time, sizeof(workers[evt.data.fd].time)) ==
         0) {
+        printf("Worker %s:%d disconnected\n", workers[evt.data.fd].addr, workers[evt.data.fd].port);
+        delete_worker(workers, evt.data.fd);
         workers_overall--;
         free_workers--;
-        workers[evt.data.fd].status = 0;
         close(evt.data.fd);
+        return;
     }
-    workers[evt.data.fd].status = GOT_INFO;
+    workers[evt.data.fd].status = FINISHED_TASK;
     free_workers++;
     if (free_workers == workers_overall) {
         for (int fd = 0; fd < MAX_FDS; fd++) {
-            char output_buf[BUF_SIZE] = {0};
-            snprintf(output_buf, BUF_SIZE, "%s:%d\n"
-                                           "CPU brand: %s\n"
-                                           "CPU units: %d\n"
-                                           "Memory: %d Mb\n"
-                                           "Time: %d nanosec\n",
-                     workers[fd].addr,
-                     workers[fd].port,
-                     workers[fd].worker_params.CPU_brand,
-                     workers[fd].worker_params.CPU_units,
-                     workers[fd].worker_params.memory,
-                     workers[fd].time);
-            write(*client, output_buf, BUF_SIZE);
-            workers[fd].time = 0;
+            if (workers[fd].status == FINISHED_TASK) {
+                char output_buf[BUF_SIZE] = {0};
+                snprintf(output_buf, BUF_SIZE, "%s:%d\n"
+                                               "CPU brand: %s\n"
+                                               "CPU units: %d\n"
+                                               "Memory: %d Mb\n"
+                                               "Time: %d nanosec\n",
+                         workers[fd].addr,
+                         workers[fd].port,
+                         workers[fd].worker_params.CPU_brand,
+                         workers[fd].worker_params.CPU_units,
+                         workers[fd].worker_params.memory,
+                         workers[fd].time);
+                write(client->fd, output_buf, BUF_SIZE);
+                workers[fd].time = 0;
+                workers[fd].status = READY_FOR_TASK;
+            }
         }
-        close(*client);
+        remove_client(client);
     }
 }
 
@@ -91,17 +97,44 @@ void delete_worker(struct Worker *workers, int fd) {
 }
 
 void hire_workers(struct Worker *workers, char *content, size_t size) {
+    if (content == NULL) {
+        return;
+    }
     for (int fd = 0; fd < MAX_FDS; fd++) {
-        if (workers[fd].status == GOT_INFO) {
+        if (workers[fd].status == READY_FOR_TASK) {
+            write(fd, (char *)&size, sizeof(size));
             workers[fd].bytes_num = write(fd, content, size);
             if (workers[fd].bytes_num == 0) {
                 printf("Worker %s:%d disconnected\n", workers[fd].addr, workers[fd].port);
                 delete_worker(workers, fd);
+                free_workers--;
+                workers_overall--;
                 close(fd);
             }
         } else {
             workers[fd].bytes_num = 0;
         }
+    }
+}
+
+void continue_to_write_file_to_worker(struct Worker *workers, int fd, char *content, size_t size) {
+    int res = 0;
+    size_t left = size - workers[fd].bytes_num;
+    while((res = write(fd, content + workers[fd].bytes_num, left)) >= 0 && left > 0) {
+        if (res == 0) {
+            printf("Worker %s:%d disconnected\n", workers[fd].addr, workers[fd].port);
+            delete_worker(workers, fd);
+            close(fd);
+            free_workers--;
+            workers_overall--;
+            return;
+        }
+        left -= res;
+        workers[fd].bytes_num += res;
+    }
+    if (workers[fd].bytes_num == size) {
+        free_workers--;
+        workers[fd].status = IS_WORKING;
     }
 }
 
