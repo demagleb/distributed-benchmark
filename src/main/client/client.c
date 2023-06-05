@@ -1,36 +1,14 @@
 #include "create_connection.h"
-#include <arpa/inet.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <dlfcn.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <inttypes.h>
-#include <limits.h>
-#include <math.h>
-#include <memory.h>
-#include <netdb.h>
-#include <pthread.h>
-#include <signal.h>
-#include <stdatomic.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <time.h>
 #include <unistd.h>
 
 enum { BUFFER_SIZE = 1024 };
 
 int send_fileinfo(int socket, char *file_name, size_t file_size) {
-    if (write(socket, &file_size, sizeof(file_size)) == -1) {
+    if (write(socket, &file_size, sizeof(file_size)) != sizeof(file_size)) {
         perror("Error sending file size");
         return -1;
     }
@@ -38,7 +16,8 @@ int send_fileinfo(int socket, char *file_name, size_t file_size) {
     char buffer[FILENAME_MAX + 1];
     strcpy(buffer, file_name);
     buffer[strlen(file_name)] = 0;
-    if (write(socket, buffer, strlen(file_name) + 1) == -1) {
+
+    if (write(socket, buffer, strlen(file_name) + 1) != strlen(file_name) + 1) {
         perror("Error sending file name");
         return -1;
     }
