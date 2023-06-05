@@ -71,7 +71,7 @@ void get_file_from_client(int *client, struct FILE_EXE *file){
         }
     }
     size_t left = file->size - file->read_size;
-    while ((res = read(*client, file->content, left)) >= 0 && left > 0) {
+    while ((res = read(*client, file->content + file->read_size, left)) >= 0 && left > 0) {
         if (res == 0) {
             printf("disconnected client\n");
             close(*client);
@@ -81,6 +81,7 @@ void get_file_from_client(int *client, struct FILE_EXE *file){
             return;
         }
         left -= res;
+        printf("%d\n", res);
         file->read_size += res;
     }
     printf("%d %lu\n", res, file->read_size);
