@@ -5,8 +5,8 @@
 
 struct WorkerParams {
     char CPU_brand[SMALL_BUF_SIZE];
-    int CPU_units;
-    int memory;
+    size_t CPU_units;
+    size_t memory;
 };
 
 
@@ -23,9 +23,10 @@ struct Worker {
 
 
 
-void accept_workers(struct Worker *workers, struct epoll_event *evt, int *epollfd);
-void get_worker_params(struct Worker *workers, struct epoll_event *evt);
-void get_results(struct Worker *workers, struct epoll_event evt, struct Client *client);
-void delete_worker(struct Worker *workers, int fd);
-void hire_workers(struct Worker *workers, char *content, size_t size) ;
-void continue_to_write_file_to_worker(struct Worker *workers, int fd, char *content, size_t size) ;
+void accept_workers(struct epoll_event *evt, int *epollfd);
+void get_worker_params(struct epoll_event *evt);
+void get_results(struct epoll_event evt, struct Client *client);
+void delete_worker(int fd);
+void hire_workers(char *content, size_t size) ;
+void continue_to_write_file_to_worker(int fd, char *content, size_t size) ;
+int get_worker_status(int fd);
