@@ -75,7 +75,7 @@ void readFile(int socket, const char *filename, size_t filesize) {
 
     FILE* file = fopen(filename, "w") ;
     while (allGot != filesize) {
-        int got = read(socket, buf, MTU);
+        int got = read(socket, buf, (MTU < filesize - allGot ? MTU : filesize - allGot));
         fwrite(buf, 1, got, file);
         allGot += got;
     }
