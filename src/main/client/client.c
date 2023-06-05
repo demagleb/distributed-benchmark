@@ -25,7 +25,7 @@ int send_fileinfo(int socket, char *file_name, size_t file_size) {
     return 0;
 }
 
-int send_file(int socket, char *file_name) {
+int send_file(int socket, char *file_name, size_t file_size) {
     int fd = open(file_name, O_RDONLY);
     if (fd == -1) {
         perror("Error opening file");
@@ -33,14 +33,18 @@ int send_file(int socket, char *file_name) {
     }
 
     char buffer[BUFFER_SIZE];
+
+    size_t all_bytes_read = 0;
+
     ssize_t bytes_read;
     while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
-        if (write(socket, buffer, bytes_read) == -1) {
+        if (write(socket, buffer, bytes_read) != bytes_read) {
             perror("Error writing to socket");
             return -1;
         }
+        all_bytes_read += bytes_read;
     }
-    if (bytes_read == -1) {
+    if (bytes_read == -1 || all_bytes_read != file_size) {
         perror("Error reading from file");
         return -1;
     }
@@ -89,7 +93,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (send_file(sock, file_name) == -1) {
+    if (send_file(sock, file_name, file_size) == -1) {
         close(sock);
         return 1;
     }
