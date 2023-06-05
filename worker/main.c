@@ -8,11 +8,15 @@
 #include <sys/signal.h>
 #include <stdio.h>
 
+
+#include <time.h>
+
 void pipeHandler(int) {
     exit(0);
 }
 
 int main(int argc, const char** argv) {
+    long start = clock();
     parseOptions(argc, argv);
 
     // int sock = connectToMaster();
@@ -30,5 +34,8 @@ int main(int argc, const char** argv) {
         break;
         // write(sock, &resultMessage, sizeof(resultMessage));
     }
+    long finish = clock();
+
+    printf("%ld %ld\n", start, finish);
     return 0;
 }
