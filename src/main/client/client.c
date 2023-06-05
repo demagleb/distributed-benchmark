@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-enum { BUFFER_SIZE = 1024 };
+enum { BUFFER_SIZE = 1024, WRITE_ATTEMPTS = 100 };
 
 int send_fileinfo(int socket, char *file_name, size_t file_size) {
     if (write(socket, &file_size, sizeof(file_size)) != sizeof(file_size)) {
@@ -38,9 +38,21 @@ int send_file(int socket, char *file_name, size_t file_size) {
 
     ssize_t bytes_read;
     while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
-        if (write(socket, buffer, bytes_read) != bytes_read) {
-            perror("Error writing to socket");
-            return -1;
+        size_t attempts = 0;
+        int result;
+        while (1) {
+            ssize_t bytes_wrote = write(socket, buffer, bytes_read);
+            if (bytes_wrote == bytes_read) {
+                break;
+            }
+            if (bytes_wrote == -1) {
+                perror("Can't send file");
+                return -1
+            }
+            if (attempts++ > WRITE_ATTEMPTS) {
+                perror("Too many times tried to write file");
+                return -1
+            }
         }
         all_bytes_read += bytes_read;
     }
