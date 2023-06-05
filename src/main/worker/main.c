@@ -16,7 +16,6 @@ void pipeHandler(int) {
 }
 
 int main(int argc, const char** argv) {
-    long start = clock();
     parseOptions(argc, argv);
 
     int sock = connectToMaster();
@@ -31,11 +30,7 @@ int main(int argc, const char** argv) {
         readFile(sock, filename, workMessage.fileSize);
         resultMessage.sec = execFile(filename);
         printf("%.10g\n", resultMessage.sec);
-        break;
         write(sock, &resultMessage, sizeof(resultMessage));
     }
-    long finish = clock();
-
-    printf("%ld %ld\n", start, finish);
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "work.h"
 
+#include <bits/time.h>
 #include <stdlib.h>
 #include <linux/prctl.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@
 
 void configureSeccomp() {
     prctl(PR_SET_NO_NEW_PRIVS, 1);
-    scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ERRNO(0));
+    scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL);
 
     /*Just to run libc*/
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(execve), 0);
@@ -43,19 +44,16 @@ void configureSeccomp() {
 
 
 double execFile(const char *filename) {
-
-    clock_t start = clock();
-    printf("Start at %ld\n", start);
+    struct timespec start, finish;
+    clock_gettime(CLOCK_REALTIME, &start);
     if (!fork()) {
-        puts("start configure");
         configureSeccomp();
-        puts("end configure");
+        puts("start");
         execl("./loadedfile", "./loadedfile");
         exit(1);
     }
 
     wait(NULL);
-    clock_t finish = clock();
-    printf("Finish at %ld\n", finish);
-    return 1.L * (finish - start) / CLOCKS_PER_SEC; 
+    clock_gettime(CLOCK_REALTIME, &finish);
+    return (finish.tv_sec - start.tv_sec) + 1e-9 * (finish.tv_nsec - start.tv_nsec); 
 }
