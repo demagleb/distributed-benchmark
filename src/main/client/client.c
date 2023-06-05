@@ -1,6 +1,30 @@
 #include "create_connection.h"
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <dirent.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <math.h>
+#include <memory.h>
+#include <netdb.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 enum { BUFFER_SIZE = 1024 };
@@ -23,7 +47,7 @@ int send_fileinfo(int socket, char *file_name, size_t file_size) {
 }
 
 int send_file(int socket, char *file_name) {
-    int fd = open(filename, O_RDONLY);
+    int fd = open(file_name, O_RDONLY);
     if (fd == -1) {
         perror("Error opening file");
         return -1;
@@ -50,7 +74,7 @@ int send_file(int socket, char *file_name) {
 int get_results(int socket) {
     char buffer[BUFFER_SIZE];
 
-    ssize_t bytes_read = read(fd, buffer, sizeof(buffer));
+    ssize_t bytes_read = read(socket, buffer, sizeof(buffer));
     if (bytes_read < 0) {
         perror("Error reading from socket");
         return -1;
