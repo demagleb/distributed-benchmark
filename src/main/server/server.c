@@ -26,7 +26,9 @@
 
 
 int main(int argc, char *argv[]) {
-    struct Worker workers[MAX_FDS];
+    for (int fd = 0; fd < MAX_FDS; ++fd) {
+        delete_worker(fd);
+    }
     struct Client client = {.file.content = NULL};
     remove_client(&client);
     signal(SIGPIPE, SIG_IGN);
@@ -62,7 +64,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         if (evt.data.fd == sock) {
-            accept_workers(workers, &evt, &epollfd);
+            accept_workers(&evt, &epollfd);
         }
         if (evt.data.fd == client_sock) {
             accept_client(evt, &epollfd, &client);
@@ -72,19 +74,20 @@ int main(int argc, char *argv[]) {
                 get_file_from_client(&client);
                 if (client.file.info.file_size > 0 && client.file.info.file_size == client.file.read_size) {
                     printf("Got full file. Start to pass jobs to workers\n");
-                    hire_workers(workers, client.file.content, client.file.info.file_size);
+                    hire_workers(client.file.content, client.file.info.file_size);
                 }
             } else {
                 if (evt.events & EPOLLOUT) {
-                    if (workers[evt.data.fd].status == READY_FOR_TASK) {
-                        continue_to_write_file_to_worker(workers, evt.data.fd, client.file.content, client.file.info.file_size);
+                    if (get_worker_status(evt.data.fd) == READY_FOR_TASK) {
+                        continue_to_write_file_to_worker( evt.data.fd, client.file.content, client.file.info.file_size);
                     }
-                } else {
-                    if (workers[evt.data.fd].status == CONNECTED) {
-                        get_worker_params(workers, &evt);
+                }
+                if (evt.events & EPOLLIN){
+                    if (get_worker_status(evt.data.fd)== CONNECTED) {
+                        get_worker_params(&evt);
                     }
-                    if (workers[evt.data.fd].status == IS_WORKING) {
-                        get_results(workers, evt, &client);
+                    if (get_worker_status(evt.data.fd) == IS_WORKING) {
+                        get_results(evt, &client);
                     }
                 }
             }
