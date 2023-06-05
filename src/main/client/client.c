@@ -39,7 +39,6 @@ int send_file(int socket, char *file_name, size_t file_size) {
     ssize_t bytes_read;
     while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
         size_t attempts = 0;
-        int result;
         while (1) {
             ssize_t bytes_wrote = write(socket, buffer, bytes_read);
             if (bytes_wrote == bytes_read) {
@@ -47,11 +46,11 @@ int send_file(int socket, char *file_name, size_t file_size) {
             }
             if (bytes_wrote == -1) {
                 perror("Can't send file");
-                return -1
+                return -1;
             }
             if (attempts++ > WRITE_ATTEMPTS) {
                 perror("Too many times tried to write file");
-                return -1
+                return -1;
             }
         }
         all_bytes_read += bytes_read;
