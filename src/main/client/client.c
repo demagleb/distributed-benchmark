@@ -30,7 +30,7 @@
 enum { BUFFER_SIZE = 1024 };
 
 int send_fileinfo(int socket, char *file_name, size_t file_size) {
-    if (write(socket, file_size, sizeof(file_size)) == -1) {
+    if (write(socket, &file_size, sizeof(file_size)) == -1) {
         perror("Error sending file size");
         return -1;
     }
