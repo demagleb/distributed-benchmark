@@ -19,7 +19,7 @@ int main(int argc, const char** argv) {
     long start = clock();
     parseOptions(argc, argv);
 
-    // int sock = connectToMaster();
+    int sock = connectToMaster();
 
     const char* filename = "./loadedfile";
     
@@ -27,12 +27,12 @@ int main(int argc, const char** argv) {
     MasterResultMessage resultMessage;
     resultMessage.messageType = MASTER_RESULT;
     while (1) {
-        // read(sock, &workMessage, sizeof(workMessage));
-        // readFile(sock, filename, workMessage.fileSize);
+        read(sock, &workMessage, sizeof(workMessage));
+        readFile(sock, filename, workMessage.fileSize);
         resultMessage.sec = execFile(filename);
         printf("%.10g\n", resultMessage.sec);
         break;
-        // write(sock, &resultMessage, sizeof(resultMessage));
+        write(sock, &resultMessage, sizeof(resultMessage));
     }
     long finish = clock();
 
