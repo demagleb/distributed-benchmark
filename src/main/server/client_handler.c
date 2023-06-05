@@ -38,8 +38,10 @@ void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) 
 }
 
 void remove_client(struct Client *client) {
+    printf("disconnect client\n");
     struct FileInfo no_info = {.file_size = 0, .file_name = {0}};
     struct FileExe no_file = {.info = no_info, .content = NULL, .read_size = 0};
+    printf("%d\n", client->file.content);
     free(client->file.content);
     close(client->fd);
     client->file = no_file;
@@ -68,6 +70,7 @@ void get_file_from_client(struct Client *client){
     size_t left = client->file.info.file_size - client->file.read_size;
     while ((res = read(client->fd, client->file.content + client->file.info.file_size, left)) >= 0 && left > 0) {
         if (res == 0) {
+            printf("Client disconnected\n");
             remove_client(client);
             return;
         }
