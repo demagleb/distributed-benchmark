@@ -1,3 +1,5 @@
+#pragma once
+
 enum {
     MAX_FDS = 100,
     BUF_SIZE = 1024,
