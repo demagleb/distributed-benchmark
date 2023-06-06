@@ -27,5 +27,5 @@ typedef struct MasterInfoMessage {
 
 typedef struct MasterResultMessage {
     MessageType messageType; // = MASTER_RESULT
-    double sec; 
+    double sec;
 } MasterResultMessage;

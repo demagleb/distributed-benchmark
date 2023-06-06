@@ -1,19 +1,14 @@
 #define _GNU_SOURCE
-#include <netdb.h>
+
 #include <sys/epoll.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
-
-#include <errno.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <arpa/inet.h>
 
-#include "constants.h"
 #include "client_handler.h"
 
 void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) {
@@ -23,10 +18,7 @@ void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) 
         if (connection == -1) {
             break;
         }
-        printf("%d\n", connection);
-        printf("%d\n", client->fd);
         if (client->fd != -1) {
-            printf("odd client\n");
             char msg[] = "Server is busy. Try to connect later\n";
             write(connection, msg, strlen(msg));
             close(connection);
@@ -49,10 +41,10 @@ void remove_client(struct Client *client) {
     client->fd = -1;
 }
 
-void get_file_from_client(struct Client *client){
+void get_file_from_client(struct Client *client) {
     int res = 0;
     if (client->file.info.file_size == 0) {
-        if (read(client->fd, (void *)&client->file.info, sizeof(client->file.info)) < sizeof(client->file.info)) {
+        if (read(client->fd, (void *) &client->file.info, sizeof(client->file.info)) < sizeof(client->file.info)) {
             printf("Cannot read filesize. The client is disconneted\n");
             remove_client(client);
             return;

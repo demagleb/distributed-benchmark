@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <netdb.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -6,10 +7,6 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
-
-#include <errno.h>
-#include <signal.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <arpa/inet.h>
