@@ -23,7 +23,10 @@ void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) 
         if (connection == -1) {
             break;
         }
+        printf("%d\n", connection);
+        printf("%d\n", client->fd);
         if (client->fd != -1) {
+            printf("odd client\n");
             char msg[] = "Server is busy. Try to connect later\n";
             write(connection, msg, strlen(msg));
             close(connection);

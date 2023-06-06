@@ -20,7 +20,12 @@
 #include "worker_handler.h"
 
 
-
+void info_about_no_workers(struct Client *client) {
+    char no_workers[] = "No workers right now or task requires more than 10 sec\n";
+    write(client->fd, no_workers, strlen(no_workers));
+    printf("No workers right now\n");
+    remove_client(client);
+}
 
 
 
@@ -74,15 +79,27 @@ int main(int argc, char *argv[]) {
                 get_file_from_client(&client);
                 if (client.file.info.file_size > 0 && client.file.info.file_size == client.file.read_size) {
                     printf("Got full file. Start to pass jobs to workers\n");
-                    if (hire_workers(client.file.content, client.file.info.file_size) == 0) {
-                        printf("No workers right now. Connect later\n");
-                        remove_client(&client);
+                    if (get_workers_overall() == 0) {
+                        info_about_no_workers(&client);
+                    } else {
+                        hire_workers(client.file.content, client.file.info.file_size, epollfd);
                     }
                 }
             } else {
+                int worker_fd = 0;
+                if ((worker_fd = get_worker_for_timer_fd(evt.data.fd)) != -1) {
+                    printf("timerfd\n");
+                    struct Worker worker = get_worker(worker_fd);
+                    printf("worker %s:%d disconnected because waiting time expired\n", worker.addr, worker.port);
+                    delete_worker(worker_fd);
+                    close(worker_fd);
+                    if (get_workers_overall() == 0) {
+                        info_about_no_workers(&client);
+                    }
+                }
                 if (evt.events & EPOLLOUT) {
-                    if (get_worker_status(evt.data.fd) == READY_FOR_TASK) {
-                        continue_to_write_file_to_worker( evt.data.fd, client.file.content, client.file.info.file_size);
+                    if (get_worker_status(evt.data.fd) == READY_FOR_TASK && client.file.info.file_size > 0 && client.file.info.file_size == client.file.read_size) {
+                        continue_to_write_file_to_worker( evt.data.fd, client.file.content, client.file.info.file_size, epollfd);
                     }
                 }
                 if (evt.events & EPOLLIN){
@@ -90,7 +107,7 @@ int main(int argc, char *argv[]) {
                         get_worker_params(&evt);
                     }
                     if (get_worker_status(evt.data.fd) == IS_WORKING) {
-                        get_results(evt, &client);
+                        get_results(evt, &client, epollfd);
                     }
                 }
             }
