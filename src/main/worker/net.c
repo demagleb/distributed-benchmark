@@ -8,6 +8,7 @@
 #include <memory.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <cpuid.h>
 #include <sys/sysinfo.h>
@@ -80,5 +81,6 @@ void readFile(int socket, const char *filename, size_t filesize) {
         allGot += got;
     }
     fclose(file);
+    chmod(filename, 0755);
     return;
 }
