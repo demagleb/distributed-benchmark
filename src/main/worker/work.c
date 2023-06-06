@@ -53,7 +53,6 @@ double execFile(const char *filename) {
         configureSeccomp();
         puts("start");
         execl("./loadedfile", "./loadedfile", NULL);
-        exit(1);
     }
     if (child == -1) {
         return -1;
@@ -61,8 +60,8 @@ double execFile(const char *filename) {
     int stat_loc;
     waitpid(child, &stat_loc, 0);
     clock_gettime(CLOCK_REALTIME, &finish);
-    if (WIFSIGNALED(stat_loc)) {
-        return -1;
+    if (WIFEXITED(stat_loc) && WEXITSTATUS(stat_loc) == 0) {
+        return (finish.tv_sec - start.tv_sec) + 1e-9 * (finish.tv_nsec - start.tv_nsec); 
     }
-    return (finish.tv_sec - start.tv_sec) + 1e-9 * (finish.tv_nsec - start.tv_nsec); 
+    return -1;
 }
