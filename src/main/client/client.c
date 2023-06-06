@@ -70,13 +70,19 @@ int send_file(int socket, char *file_name, size_t file_size) {
 int get_results(int socket) {
     char buffer[BUFFER_SIZE];
 
-    ssize_t bytes_read = read(socket, buffer, sizeof(buffer));
-    if (bytes_read < 0) {
-        perror("Error reading from socket");
-        return -1;
+    while (1) {
+        ssize_t bytes_read = read(socket, buffer, sizeof(buffer));
+        if (bytes_read == 0) {
+            break;
+        }
+        if (bytes_read < 0) {
+            perror("Error reading from socket");
+            return -1;
+        }
+        buffer[bytes_read] = '\0';
+        printf("%s", buffer);
     }
-    buffer[bytes_read] = '\0';
-    printf("%s", buffer);
+
     fflush(stdout);
 
     return 0;
