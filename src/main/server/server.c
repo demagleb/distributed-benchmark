@@ -1,17 +1,11 @@
 #define _GNU_SOURCE
-#include <netdb.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
 
+#include <sys/epoll.h>
+#include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <arpa/inet.h>
 
 #include "create_listener.h"
 
@@ -26,8 +20,6 @@ void info_about_no_workers(struct Client *client) {
     printf("No workers right now\n");
     remove_client(client);
 }
-
-
 
 
 int main(int argc, char *argv[]) {
@@ -98,12 +90,14 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 if (evt.events & EPOLLOUT) {
-                    if (get_worker_status(evt.data.fd) == READY_FOR_TASK && client.file.info.file_size > 0 && client.file.info.file_size == client.file.read_size) {
-                        continue_to_write_file_to_worker( evt.data.fd, client.file.content, client.file.info.file_size, epollfd);
+                    if (get_worker_status(evt.data.fd) == READY_FOR_TASK && client.file.info.file_size > 0 &&
+                        client.file.info.file_size == client.file.read_size) {
+                        continue_to_write_file_to_worker(evt.data.fd, client.file.content, client.file.info.file_size,
+                                                         epollfd);
                     }
                 }
-                if (evt.events & EPOLLIN){
-                    if (get_worker_status(evt.data.fd)== CONNECTED) {
+                if (evt.events & EPOLLIN) {
+                    if (get_worker_status(evt.data.fd) == CONNECTED) {
                         get_worker_params(&evt);
                     }
                     if (get_worker_status(evt.data.fd) == IS_WORKING) {
