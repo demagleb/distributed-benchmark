@@ -1,4 +1,5 @@
 #include "work.h"
+#include "options.h"
 
 #include <bits/time.h>
 #include <stdlib.h>
@@ -52,7 +53,7 @@ double execFile(const char *filename) {
     if (!(child = fork())) {
         configureSeccomp();
         puts("start");
-        execl("./loadedfile", "./loadedfile", NULL);
+        execl(options()->filename, options()->filename, NULL);
     }
     if (child == -1) {
         return -1;
@@ -60,6 +61,7 @@ double execFile(const char *filename) {
     int stat_loc;
     waitpid(child, &stat_loc, 0);
     clock_gettime(CLOCK_REALTIME, &finish);
+    remove(options()->filename);
     if (WIFEXITED(stat_loc) && WEXITSTATUS(stat_loc) == 0) {
         return (finish.tv_sec - start.tv_sec) + 1e-9 * (finish.tv_nsec - start.tv_nsec); 
     }

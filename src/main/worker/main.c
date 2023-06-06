@@ -17,10 +17,8 @@ void pipeHandler(int) {
 
 int main(int argc, const char** argv) {
     parseOptions(argc, argv);
-
+    genFilename();
     int sock = connectToMaster();
-
-    const char* filename = "./loadedfile";
     
     WorkerWorkMessage workMessage;
     MasterResultMessage resultMessage;
@@ -28,9 +26,9 @@ int main(int argc, const char** argv) {
     while (1) {
         printf("Read file started\n");
         read(sock, &workMessage, sizeof(workMessage));
-        readFile(sock, filename, workMessage.fileSize);
+        readFile(sock, options()->filename, workMessage.fileSize);
         printf("Read file finished\n");
-        resultMessage.sec = execFile(filename);
+        resultMessage.sec = execFile(options()->filename);
         printf("%.10g\n", resultMessage.sec);
         write(sock, &resultMessage, sizeof(resultMessage));
     }
