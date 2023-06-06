@@ -4,22 +4,24 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "../common/fileinfo.h"
 
-enum { BUFFER_SIZE = 1024, WRITE_ATTEMPTS = 100 };
+enum { BUFFER_SIZE = 1024, MAX_ATTEMPTS = 100 };
 
 int send_fileinfo(int socket, char *file_name, size_t file_size) {
-    if (write(socket, &file_size, sizeof(file_size)) != sizeof(file_size)) {
-        perror("Error sending file size");
-        return -1;
-    }
+    struct FileInfo file_info;
+    file_info.file_size = file_size;
+    memset(file_info.file_name, 0, sizeof(file_info.file_name));
+    strcpy(file_info.file_name, file_name);
 
-    char buffer[FILENAME_MAX + 1];
-    strcpy(buffer, file_name);
-    buffer[strlen(file_name)] = 0;
-
-    if (write(socket, buffer, strlen(file_name) + 1) != strlen(file_name) + 1) {
-        perror("Error sending file name");
-        return -1;
+    size_t bytes_sent = 0;
+    while (bytes_sent < sizeof(file_info)) {
+        ssize_t res = write(socket, ((void *) &file_info) + bytes_sent, sizeof(file_info) - bytes_sent);
+        if (res == -1) {
+            perror("Error sending file info");
+            return -1;
+        }
+        bytes_sent += res;
     }
 
     return 0;
@@ -38,21 +40,21 @@ int send_file(int socket, char *file_name, size_t file_size) {
 
     ssize_t bytes_read;
     while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
+        size_t pointer = 0;
         size_t attempts = 0;
-        size_t buffer_pointer = 0;
-        while (++attempts < WRITE_ATTEMPTS) {
-            ssize_t bytes_wrote = write(socket, buffer + buffer_pointer, bytes_read - buffer_pointer);
+        while (++attempts < MAX_ATTEMPTS) {
+            ssize_t bytes_wrote = write(socket, buffer + pointer, bytes_read - pointer);
             if (bytes_wrote == -1) {
-                perror("Can't send file");
+                perror("Error writing to socket");
                 return -1;
             }
-            buffer_pointer += bytes_wrote;
-            if (buffer_pointer == bytes_read) {
+            pointer += bytes_wrote;
+            if (pointer == bytes_read) {
                 break;
             }
         }
-        if (attempts >= WRITE_ATTEMPTS) {
-            perror("Too many times tried to write file");
+        if (attempts >= MAX_ATTEMPTS) {
+            perror("Too many attempts");
             return -1;
         }
         all_bytes_read += bytes_read;
