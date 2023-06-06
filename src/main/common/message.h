@@ -2,7 +2,7 @@
 #include <sys/time.h>
 
 enum {
-    CPU_BRAND_SIZE = 20
+    CPU_BRAND_SIZE = 128
 };
 
 
@@ -27,5 +27,5 @@ typedef struct MasterInfoMessage {
 
 typedef struct MasterResultMessage {
     MessageType messageType; // = MASTER_RESULT
-    double sec;
+    double sec; 
 } MasterResultMessage;
