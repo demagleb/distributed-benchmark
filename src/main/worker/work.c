@@ -52,7 +52,7 @@ double execFile(const char *filename) {
     if (!(child = fork())) {
         configureSeccomp();
         puts("start");
-        execl("./loadedfile", "./loadedfile");
+        execl("./loadedfile", "./loadedfile", NULL);
         exit(1);
     }
     if (child == -1) {
