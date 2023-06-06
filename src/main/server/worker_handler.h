@@ -16,7 +16,7 @@ struct Worker {
     int time;
     int status;
     int timer_fd;
-    int bytes_num;
+    size_t bytes_num;
     struct WorkerParams worker_params;
 };
 

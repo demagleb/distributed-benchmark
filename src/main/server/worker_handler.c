@@ -35,9 +35,7 @@ void accept_workers(struct epoll_event *evt, int *epollfd) {
         evt1.data.fd = connection;
         epoll_ctl(*epollfd, EPOLL_CTL_ADD, connection, &evt1);
         workers[connection].status = CONNECTED;
-        free_workers++;
-        workers_overall++;
-        printf("WORKER CONNECTED\n");
+        printf("Worker connected\n");
         inet_ntop(AF_INET, &(worker_addr.sin_addr), workers[connection].addr, BUF_SIZE);
         workers[connection].port = ntohs(worker_addr.sin_port);
     }
@@ -56,6 +54,8 @@ void get_worker_params(struct epoll_event *evt){
     printf("%s %lu %lu\n", workers[evt->data.fd].worker_params.CPU_brand,
            workers[evt->data.fd].worker_params.CPU_units,
            workers[evt->data.fd].worker_params.memory);
+    free_workers++;
+    workers_overall++;
     workers[evt->data.fd].status = READY_FOR_TASK;
 }
 
@@ -73,6 +73,7 @@ void get_results(struct epoll_event evt, struct Client *client){
     workers[evt.data.fd].time = msg_res.sec;
     workers[evt.data.fd].status = FINISHED_TASK;
     free_workers++;
+    printf("%d %d\n", free_workers, workers_overall);
     if (free_workers == workers_overall) {
         for (int fd = 0; fd < MAX_FDS; fd++) {
             if (workers[fd].status == FINISHED_TASK) {
@@ -80,8 +81,8 @@ void get_results(struct epoll_event evt, struct Client *client){
                 snprintf(output_buf, BUF_SIZE, "%s:%d\n"
                                                "CPU brand: %s\n"
                                                "CPU units: %lu\n"
-                                               "Memory: %lu Mb\n"
-                                               "Time: %d nanosec\n",
+                                               "Memory: %lu bytes\n"
+                                               "Time: %d sec\n",
                          workers[fd].addr,
                          workers[fd].port,
                          workers[fd].worker_params.CPU_brand,
@@ -132,6 +133,7 @@ int hire_workers(char *content, size_t size) {
 void continue_to_write_file_to_worker(int fd, char *content, size_t size) {
     int res = 0;
     size_t left = size - workers[fd].bytes_num;
+    printf("%lu\n", size);
     while(left > 0 && (res = write(fd, content + workers[fd].bytes_num, left)) >= 0) {
         if (res == 0) {
             printf("Worker %s:%d disconnected\n", workers[fd].addr, workers[fd].port);
@@ -144,6 +146,7 @@ void continue_to_write_file_to_worker(int fd, char *content, size_t size) {
         left -= res;
         workers[fd].bytes_num += res;
     }
+    printf("%lu %d %lu\n", workers[fd].bytes_num, fd, size);
     if (workers[fd].bytes_num == size) {
         printf("worker started job\n");
         free_workers--;
