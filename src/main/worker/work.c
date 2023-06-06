@@ -11,6 +11,7 @@
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 
 
@@ -18,6 +19,7 @@ void configureSeccomp() {
     prctl(PR_SET_NO_NEW_PRIVS, 1);
     scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL);
 
+    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clock_nanosleep), 0);
     /*Just to run libc*/
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(execve), 0);
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(brk), 0);
@@ -46,14 +48,21 @@ void configureSeccomp() {
 double execFile(const char *filename) {
     struct timespec start, finish;
     clock_gettime(CLOCK_REALTIME, &start);
-    if (!fork()) {
+    pid_t child;
+    if (!(child = fork())) {
         configureSeccomp();
         puts("start");
         execl("./loadedfile", "./loadedfile");
         exit(1);
     }
-
-    wait(NULL);
+    if (child == -1) {
+        return -1;
+    }
+    int stat_loc;
+    waitpid(child, &stat_loc, 0);
     clock_gettime(CLOCK_REALTIME, &finish);
+    if (WIFSIGNALED(stat_loc)) {
+        return -1;
+    }
     return (finish.tv_sec - start.tv_sec) + 1e-9 * (finish.tv_nsec - start.tv_nsec); 
 }
