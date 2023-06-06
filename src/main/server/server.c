@@ -74,7 +74,10 @@ int main(int argc, char *argv[]) {
                 get_file_from_client(&client);
                 if (client.file.info.file_size > 0 && client.file.info.file_size == client.file.read_size) {
                     printf("Got full file. Start to pass jobs to workers\n");
-                    hire_workers(client.file.content, client.file.info.file_size);
+                    if (hire_workers(client.file.content, client.file.info.file_size) == 0) {
+                        printf("No workers right now. Connect later\n");
+                        remove_client(&client);
+                    }
                 }
             } else {
                 if (evt.events & EPOLLOUT) {

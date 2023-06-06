@@ -103,9 +103,10 @@ void delete_worker(int fd) {
     workers[fd] = no_worker;
 }
 
-void hire_workers(char *content, size_t size) {
+int hire_workers(char *content, size_t size) {
+    int hired = 0;
     if (content == NULL) {
-        return;
+        return 0;
     }
     for (int fd = 0; fd < MAX_FDS; fd++) {
         if (workers[fd].status == READY_FOR_TASK) {
@@ -118,17 +119,20 @@ void hire_workers(char *content, size_t size) {
                 free_workers--;
                 workers_overall--;
                 close(fd);
+            } else {
+                hired++;
             }
         } else {
             workers[fd].bytes_num = 0;
         }
     }
+    return hired;
 }
 
 void continue_to_write_file_to_worker(int fd, char *content, size_t size) {
     int res = 0;
     size_t left = size - workers[fd].bytes_num;
-    while((res = write(fd, content + workers[fd].bytes_num, left)) >= 0 && left > 0) {
+    while(left > 0 && (res = write(fd, content + workers[fd].bytes_num, left)) >= 0) {
         if (res == 0) {
             printf("Worker %s:%d disconnected\n", workers[fd].addr, workers[fd].port);
             delete_worker(fd);
@@ -141,6 +145,7 @@ void continue_to_write_file_to_worker(int fd, char *content, size_t size) {
         workers[fd].bytes_num += res;
     }
     if (workers[fd].bytes_num == size) {
+        printf("worker started job\n");
         free_workers--;
         workers[fd].status = IS_WORKING;
     }
