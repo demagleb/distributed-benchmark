@@ -26,10 +26,10 @@ int main(int argc, const char** argv) {
     MasterResultMessage resultMessage;
     resultMessage.messageType = MASTER_RESULT;
     while (1) {
-        printf("Read file started");
+        printf("Read file started\n");
         read(sock, &workMessage, sizeof(workMessage));
         readFile(sock, filename, workMessage.fileSize);
-        printf("Read file finished");
+        printf("Read file finished\n");
         resultMessage.sec = execFile(filename);
         printf("%.10g\n", resultMessage.sec);
         write(sock, &resultMessage, sizeof(resultMessage));
