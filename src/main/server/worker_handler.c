@@ -1,14 +1,9 @@
 #define _GNU_SOURCE
-#include <netdb.h>
+
 #include <sys/epoll.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
-
-#include <errno.h>
-#include <signal.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -44,9 +39,7 @@ void accept_workers(struct epoll_event *evt, int *epollfd) {
 }
 
 
-
-
-void get_worker_params(struct epoll_event *evt){
+void get_worker_params(struct epoll_event *evt) {
     struct MasterInfoMessage msg_info;
     read(evt->data.fd, (char *) &msg_info, sizeof(struct MasterInfoMessage));
     // write(evt->data.fd, "OK\n", 3);
@@ -60,7 +53,7 @@ void get_worker_params(struct epoll_event *evt){
     workers[evt->data.fd].status = READY_FOR_TASK;
 }
 
-void get_results(struct epoll_event evt, struct Client *client, int epollfd){
+void get_results(struct epoll_event evt, struct Client *client, int epollfd) {
     struct MasterResultMessage msg_res;
     if (read(evt.data.fd, (char *) &msg_res, sizeof(msg_res)) ==
         0) {
@@ -104,7 +97,8 @@ void get_results(struct epoll_event evt, struct Client *client, int epollfd){
 
 void delete_worker(int fd) {
     struct WorkerParams no_params = {.memory = 0, .CPU_units = 0, .CPU_brand = {0}};
-    struct Worker no_worker = {.port = 0, .addr = {0}, .status = NO_INFO, .bytes_num = 0, .worker_params = no_params, .timer_fd = -1, .time = 0};
+    struct Worker no_worker = {.port = 0, .addr = {
+            0}, .status = NO_INFO, .bytes_num = 0, .worker_params = no_params, .timer_fd = -1, .time = 0};
     if (workers[fd].timer_fd != -1) {
         close(workers[fd].timer_fd);
     }
@@ -122,7 +116,7 @@ void hire_workers(char *content, size_t size, int epollfd) {
     for (int fd = 0; fd < MAX_FDS; fd++) {
         if (workers[fd].status == READY_FOR_TASK) {
             struct WorkerWorkMessage msg_work = {.messageType = WORKER_WORK, .fileSize = size};
-            write(fd, (char *)&msg_work, sizeof(msg_work));
+            write(fd, (char *) &msg_work, sizeof(msg_work));
             continue_to_write_file_to_worker(fd, content, size, epollfd);
         }
     }
@@ -134,7 +128,7 @@ void continue_to_write_file_to_worker(int fd, char *content, size_t size, int ep
         return;
     }
     size_t left = size - workers[fd].bytes_num;
-    while(left > 0 && (res = write(fd, content + workers[fd].bytes_num, left)) >= 0) {
+    while (left > 0 && (res = write(fd, content + workers[fd].bytes_num, left)) >= 0) {
         if (res == 0) {
             printf("Worker %s:%d disconnected\n", workers[fd].addr, workers[fd].port);
             delete_worker(fd);
@@ -148,7 +142,7 @@ void continue_to_write_file_to_worker(int fd, char *content, size_t size, int ep
         workers[fd].timer_fd = timerfd_create(CLOCK_REALTIME, 0);
         timer_fds[workers[fd].timer_fd] = fd;
         struct itimerspec wait_to_disconnect = {.it_value.tv_sec = SECONDS_TO_WAIT, .it_value.tv_nsec = 0, .it_interval.tv_nsec = 0, .it_interval.tv_sec = 0};
-        struct epoll_event evt1 = {.events = EPOLLIN  | EPOLLET};
+        struct epoll_event evt1 = {.events = EPOLLIN | EPOLLET};
         evt1.data.fd = workers[fd].timer_fd;
         epoll_ctl(epollfd, EPOLL_CTL_ADD, workers[fd].timer_fd, &evt1);
         timerfd_settime(workers[fd].timer_fd, 0, &wait_to_disconnect, NULL);
