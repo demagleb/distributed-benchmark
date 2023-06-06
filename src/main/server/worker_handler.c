@@ -71,6 +71,7 @@ void get_results(struct epoll_event evt, struct Client *client, int epollfd){
     }
     workers[evt.data.fd].time = msg_res.sec;
     workers[evt.data.fd].status = FINISHED_TASK;
+    workers[evt.data.fd].bytes_num = 0;
     workers_finished++;
     epoll_ctl(epollfd, EPOLL_CTL_DEL, workers[evt.data.fd].timer_fd, NULL);
     timer_fds[evt.data.fd] = -1;
