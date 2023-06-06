@@ -1,6 +1,6 @@
 #include "net.h"
 #include "options.h"
-#include "../common/message.h"
+#include "sysinfo.h"
 
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -48,32 +48,16 @@ int makeConnection() {
 
 
 int connectToMaster() {
-    int sock = makeConnection();
-
-
     MasterInfoMessage info;
-
-
-    struct sysinfo sinfo;
-    if (sysinfo(&sinfo)) {
-        perror("sysinfo");
-        exit(1);
-    }
-
-    info.cpuCount = get_nprocs();
-    info.ram = sinfo.totalram;
-    memcpy(&info.cpuBrand, "Intel", 6);
-
+    fillSystemInfo(&info);
+    int sock = makeConnection();
     write(sock, &info, sizeof(info));
-
     return sock;
 }
 
 void readFile(int socket, const char *filename, size_t filesize) {
-    
     char buf[MTU];
     size_t allGot = 0;
-
     FILE* file = fopen(filename, "w") ;
     while (allGot != filesize) {
         int got = read(socket, buf, (MTU < filesize - allGot ? MTU : filesize - allGot));
