@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "../common/fileinfo.h"
+#include "../common/message.h"
 
 enum { BUFFER_SIZE = 1024, MAX_ATTEMPTS = 100 };
 
@@ -97,6 +98,16 @@ int main(int argc, char* argv[]) {
     }
     int sock = create_connection(argv[2], argv[3]);
     if (sock < 0) {
+        return 1;
+    }
+
+    ServerAnswer server_answer;
+    if (read(sock, &server_answer, sizeof(server_answer)) != sizeof(server_answer)) {
+        perror("Error reading result of connection from socket");
+        return 1;
+    }
+    if (server_answer.messageType != CLIENT_CONNECTED) {
+        fprintf(stderr, "Error connecting to server: %s\n", server_answer.message);
         return 1;
     }
 

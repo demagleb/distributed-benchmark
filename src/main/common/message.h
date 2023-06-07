@@ -1,12 +1,16 @@
 #include <stddef.h>
 #include <sys/time.h>
 
+enum { MESSAGE_MAX_SIZE = 128 };
+
 typedef enum MessageType {
     WORKER_STATUS, // Send to worker.c to get status
     WORKER_WORK, // Send to worker.c to start work
     WORKER_STOP, // Send to worker.c to stop work
     WORKER_SHUTDOWN, // Send to worker.c to shutdown
     MASTER_RESULT, // Send to master to return result
+    CLIENT_CONNECTED, // Send to client to notify that it is connected
+    CLIENT_CONNECTION_ERROR, // Send to client to notify that it is not connected
 } MessageType;
 
 typedef enum WorkerStatus {
@@ -37,3 +41,8 @@ typedef struct MasterResultMessage {
     MessageType messageType; // = MASTER_RESULT
     double sec; 
 } MasterResultMessage;
+
+typedef struct ServerAnswer {
+    MessageType messageType;
+    char message[MESSAGE_MAX_SIZE];
+} ServerAnswer;
