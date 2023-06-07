@@ -1,17 +1,11 @@
 #define _GNU_SOURCE
-#include <netdb.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
 
+#include <sys/epoll.h>
+#include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <arpa/inet.h>
 
 #include "create_listener.h"
 
@@ -20,15 +14,20 @@
 #include "worker_handler.h"
 
 
-int client = 0;
-
-
-
+void info_about_no_workers(struct Client *client) {
+    char no_workers[] = "No workers right now or task requires more than 10 sec\n";
+    write(client->fd, no_workers, strlen(no_workers));
+    printf("No workers right now\n");
+    remove_client(client);
+}
 
 
 int main(int argc, char *argv[]) {
-    struct Worker workers[MAX_FDS];
-    struct FILE_EXE file = {.content = NULL, .size = 0, .read_size = -1};
+    for (int fd = 0; fd < MAX_FDS; ++fd) {
+        delete_worker(fd);
+    }
+    struct Client client = {.file.content = NULL};
+    remove_client(&client);
     signal(SIGPIPE, SIG_IGN);
     if (argc != 4) {
         fprintf(stderr, "Usage: %s SERVICE\n", argv[0]);
@@ -62,25 +61,48 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         if (evt.data.fd == sock) {
-            accept_workers(workers, &evt, &epollfd);
+            accept_workers(&evt, &epollfd);
         }
         if (evt.data.fd == client_sock) {
             accept_client(evt, &epollfd, &client);
-            printf("%d\n", client);
         }
         if (evt.data.fd != sock && evt.data.fd != client_sock) {
-            printf("%d\n", evt.data.fd);
-            if (evt.data.fd == client) {
-                get_file_from_client(&client, &file);
-                if (file.size > 0 && file.size == file.read_size) {
-                    hire_workers(workers, file.content, file.size);
+            if (evt.data.fd == client.fd) {
+                get_file_from_client(&client);
+                if (client.file.info.file_size > 0 && client.file.info.file_size == client.file.read_size) {
+                    printf("Got full file. Start to pass jobs to workers\n");
+                    if (get_workers_overall() == 0) {
+                        info_about_no_workers(&client);
+                    } else {
+                        hire_workers(client.file.content, client.file.info.file_size, epollfd);
+                    }
                 }
             } else {
-                if (workers[evt.data.fd].status == CONNECTED) {
-                    get_worker_params(workers, &evt);
+                int worker_fd = 0;
+                if ((worker_fd = get_worker_for_timer_fd(evt.data.fd)) != -1) {
+                    printf("timerfd\n");
+                    struct Worker worker = get_worker(worker_fd);
+                    printf("worker %s:%d disconnected because waiting time expired\n", worker.addr, worker.port);
+                    delete_worker(worker_fd);
+                    close(worker_fd);
+                    if (get_workers_overall() == 0) {
+                        info_about_no_workers(&client);
+                    }
                 }
-                if (workers[evt.data.fd].status == IS_WORKING) {
-                    get_results(workers, evt, &client);
+                if (evt.events & EPOLLOUT) {
+                    if (get_worker_status(evt.data.fd) == READY_FOR_TASK && client.file.info.file_size > 0 &&
+                        client.file.info.file_size == client.file.read_size) {
+                        continue_to_write_file_to_worker(evt.data.fd, client.file.content, client.file.info.file_size,
+                                                         epollfd);
+                    }
+                }
+                if (evt.events & EPOLLIN) {
+                    if (get_worker_status(evt.data.fd) == CONNECTED) {
+                        get_worker_params(&evt);
+                    }
+                    if (get_worker_status(evt.data.fd) == IS_WORKING) {
+                        get_results(evt, &client, epollfd);
+                    }
                 }
             }
 
