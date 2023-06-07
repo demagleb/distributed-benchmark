@@ -74,7 +74,7 @@ int get_results(int socket) {
     char buffer[BUFFER_SIZE];
 
     while (1) {
-        ssize_t bytes_read = read(socket, buffer, sizeof(buffer));
+        ssize_t bytes_read = read(socket, buffer, sizeof(buffer) - 1);
         if (bytes_read == 0) {
             break;
         }
