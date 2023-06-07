@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "../common/fileinfo.h"
+#include "../common/message.h"
 
 enum { BUFFER_SIZE = 1024, MAX_ATTEMPTS = 100 };
 
@@ -72,13 +73,19 @@ int send_file(int socket, char *file_name, size_t file_size) {
 int get_results(int socket) {
     char buffer[BUFFER_SIZE];
 
-    ssize_t bytes_read = read(socket, buffer, sizeof(buffer));
-    if (bytes_read < 0) {
-        perror("Error reading from socket");
-        return -1;
+    while (1) {
+        ssize_t bytes_read = read(socket, buffer, sizeof(buffer));
+        if (bytes_read == 0) {
+            break;
+        }
+        if (bytes_read < 0) {
+            perror("Error reading from socket");
+            return -1;
+        }
+        buffer[bytes_read] = '\0';
+        printf("%s", buffer);
     }
-    buffer[bytes_read] = '\0';
-    printf("%s", buffer);
+
     fflush(stdout);
 
     return 0;
@@ -91,6 +98,16 @@ int main(int argc, char* argv[]) {
     }
     int sock = create_connection(argv[2], argv[3]);
     if (sock < 0) {
+        return 1;
+    }
+
+    ServerAnswer server_answer;
+    if (read(sock, &server_answer, sizeof(server_answer)) != sizeof(server_answer)) {
+        perror("Error reading result of connection from socket");
+        return 1;
+    }
+    if (server_answer.messageType != CLIENT_CONNECTED) {
+        fprintf(stderr, "Error connecting to server: %s\n", server_answer.message);
         return 1;
     }
 
