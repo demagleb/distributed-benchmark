@@ -45,8 +45,6 @@ int makeConnection() {
     return sock;
 }
 
-
-
 int connectToMaster() {
     MasterInfoMessage info;
     fillSystemInfo(&info);
