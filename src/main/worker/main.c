@@ -8,7 +8,6 @@
 #include <sys/signal.h>
 #include <stdio.h>
 
-
 #include <time.h>
 
 void pipeHandler(int) {
@@ -20,8 +19,8 @@ int main(int argc, const char** argv) {
     genFilename();
     int sock = connectToMaster();
     
-    WorkerWorkMessage workMessage;
-    MasterResultMessage resultMessage;
+    WorkerWorkMessage workMessage = {0}};
+    MasterResultMessage resultMessage = {0};
     resultMessage.messageType = MASTER_RESULT;
     while (1) {
         printf("Read file started\n");

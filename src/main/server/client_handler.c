@@ -19,7 +19,7 @@ void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) 
         if (connection == -1) {
             break;
         }
-        struct ServerAnswer ans;
+        struct ServerAnswer ans = {0};
         if (client->fd != -1) {
             char msg[] = "Server is busy. Try to connect later\n";
             strcpy(ans.message, msg);

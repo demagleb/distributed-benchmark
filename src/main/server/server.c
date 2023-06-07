@@ -30,13 +30,15 @@ int main(int argc, char *argv[]) {
     remove_client(&client);
     signal(SIGPIPE, SIG_IGN);
     if (argc != 4) {
-        fprintf(stderr, "Usage: %s SERVICE\n", argv[0]);
+        fprintf(stderr, "Usage: %s SERVICE PORT_FOR_WORKERS PORT_FOR_CLIENTS\n", argv[0]);
         return 1;
     }
+    printf("ADDRESS AND PORT FOR WORKERS: ");
     int sock = create_listener(argv[1], argv[2]);
     if (sock < 0) {
         return 1;
     }
+    printf("ADDRESS AND PORT FOR CLIENTS: ");
     int client_sock = create_listener(argv[1], argv[3]);
     if (client_sock < 0) {
         return 1;

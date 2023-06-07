@@ -115,7 +115,9 @@ void hire_workers(char *content, size_t size, int epollfd) {
     }
     for (int fd = 0; fd < MAX_FDS; fd++) {
         if (workers[fd].status == READY_FOR_TASK) {
-            struct WorkerWorkMessage msg_work = {.messageType = WORKER_WORK, .fileSize = size};
+            struct WorkerWorkMessage msg_work = {0};
+            msg_work.messageType = WORKER_WORK;
+            msg_work.fileSize = size;
             write(fd, (char *) &msg_work, sizeof(msg_work));
             continue_to_write_file_to_worker(fd, content, size, epollfd);
         }

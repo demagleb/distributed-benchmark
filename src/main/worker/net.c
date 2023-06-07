@@ -48,7 +48,7 @@ int makeConnection() {
 
 
 int connectToMaster() {
-    MasterInfoMessage info;
+    MasterInfoMessage info = {0};
     fillSystemInfo(&info);
     int sock = makeConnection();
     write(sock, &info, sizeof(info));
