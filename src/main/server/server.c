@@ -80,7 +80,6 @@ int main(int argc, char *argv[]) {
             } else {
                 int worker_fd = 0;
                 if ((worker_fd = get_worker_for_timer_fd(evt.data.fd)) != -1) {
-                    printf("timerfd\n");
                     struct Worker worker = get_worker(worker_fd);
                     printf("worker %s:%d disconnected because waiting time expired\n", worker.addr, worker.port);
                     delete_worker(worker_fd);

@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 
 #include "client_handler.h"
+#include "../common/message.h"
 
 void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) {
     while (1) {
@@ -18,9 +19,13 @@ void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) 
         if (connection == -1) {
             break;
         }
+        struct ServerAnswer ans;
         if (client->fd != -1) {
             char msg[] = "Server is busy. Try to connect later\n";
-            write(connection, msg, strlen(msg));
+            strcpy(ans.message, msg);
+            ans.message[strlen(msg)] = '\0';
+            ans.messageType = CLIENT_CONNECTION_ERROR;
+            write(connection, &ans, sizeof(ans));
             close(connection);
             continue;
         }
@@ -29,6 +34,11 @@ void accept_client(struct epoll_event evt, int *epollfd, struct Client *client) 
         evt1.data.fd = connection;
         epoll_ctl(*epollfd, EPOLL_CTL_ADD, connection, &evt1);
         client->fd = connection;
+        ans.messageType = CLIENT_CONNECTED;
+        char msg[] = "OK\n";
+        strcpy(ans.message, msg);
+        ans.message[strlen(msg)] = '\0';
+        write(connection, &ans, sizeof(ans));
     }
 }
 
